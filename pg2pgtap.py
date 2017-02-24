@@ -39,10 +39,17 @@ def main():
         sys.exit(-1)
     
     #output
-    if 'output' in config:
-        output_dest = config['output']['Destination']
+    if 'Output' in config:
+        output_dest = config['Output']['Destination']
     else: 
         log_dest = ''
+    
+    if 'Tests' in config:
+        tests_scehma = tuple(config['Tests']['Schema'])
+        tests_tables = tuple(config['Tests']['Table'])
+        tests_columns = tuple(config['Tests']['Column'])
+    else: 
+         print 'CONFIG ERROR: No  "Tests" section'
         
     # --------------------------------------------
     # -- DB Queries & Python objects rep of pg db
@@ -97,9 +104,28 @@ def main():
         text_file.write('\set QUIET 1')
         text_file.write('\n-- Load the TAP functions')
         text_file.write('BEGIN;')
-        text_file.write('\n\i pgtap.sql')
+        text_file.write('\n\i pgtap.sql\n\n')
                                     
-            
+        '''               
+        pgtap_tests = {('has_schema',):schema_objs,
+             ('has_table',):table_objs,
+             ('has_default', 'is_null', 'type_is', 'has_column'):column_objs 
+             }
+        '''
+        
+        pgtap_tests = {tests_scehma:schema_objs,
+             ('has_table',):table_objs,
+             ('has_default', 'is_null', 'type_is', 'has_column'):column_objs 
+             }
+                        
+        for tests, db_objects in pgtap_tests.iteritems():
+            for obj in db_objects:
+                for test in tests:
+                    test_method = getattr(obj, test)
+                    text_file.write( '{0}\n'.format(test_method()) )
+                
+
+        '''
         # Schema Tests
         for s in schema_objs:
             s.has_schema()
@@ -126,10 +152,12 @@ def main():
                 text_file.write( '{0}\n'.format(test_method()) )
                 
                 c_tests += 1
-
+        '''
         text_file.write( '\n{0} Schema tests'.format( s_tests ))    
         text_file.write( '\n{0} Table tests'.format( t_tests ))
         text_file.write( '\n{0} Column tests'.format( c_tests ))
+    
+    cur.close()
 
 #SELECT * FROM finish();
 
